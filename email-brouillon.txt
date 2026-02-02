@@ -1,0 +1,86 @@
+Objet : 🦞 Tutoriel OpenClaw Complet - Site, Notion & PDF
+
+Bonjour Stephane,
+
+J'ai créé tout ce que tu as demandé ! Voici le récapitulatif :
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 SITE WEB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Le site est prêt et tourne localement sur :
+→ http://localhost:3000
+
+Il comprend :
+✅ Page d'accueil avec hero section (style OpenClassrooms)
+✅ Page Tutoriel avec 10 sections et navigation sticky
+✅ Page Use Cases avec les 4 exemples détaillés
+✅ Design responsive, animations, dégradés violet-bleu
+✅ Fichiers markdown téléchargeables
+
+Pour le déployer sur Coolify :
+1. Configure le token Coolify dans ~/.openclaw/.env :
+   COOLIFY_TOKEN=ton_token
+   
+2. Ou utilise cette commande directement :
+   cd ~/Documents/App/tuto-openclaw-site
+   docker build -t tuto-openclaw .
+   # Puis push sur ton registry Coolify
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 PAGE NOTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pour créer la page dans AGENCE/Tuto Openclaw complet :
+
+1. Va dans ton workspace Notion → Base AGENCE
+2. Crée une nouvelle page "Tuto OpenClaw complet"
+3. Ajoute ces liens :
+   - Site web : [à compléter après déploiement]
+   - Tutoriel Markdown : ~/Documents/App/tuto-openclaw-site/dist/TUTORIEL_OPENCLAW_DEV.md
+   - Use Cases Markdown : ~/Documents/App/tuto-openclaw-site/dist/USECASES_OPENCLAW.md
+   - PDF : ~/Documents/App/tuto-openclaw-site/Tutoriel-OpenClaw-Complet.pdf
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 PIÈCE JOINTE - PDF
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Le PDF est généré avec :
+✅ Ton logo en première page
+✅ 33+ pages de contenu
+✅ Mise en page professionnelle
+✅ Code blocks colorés
+✅ Tableaux formatés
+
+Fichier : Tutoriel-OpenClaw-Complet.pdf
+Localisation : ~/Documents/App/tuto-openclaw-site/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 FICHIERS CRÉÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+~/Documents/App/tuto-openclaw-site/
+├── dist/                          # Site statique buildé
+│   ├── index.html
+│   ├── tutoriel/
+│   ├── usecases/
+│   ├── TUTORIEL_OPENCLAW_DEV.md
+│   └── USECASES_OPENCLAW.md
+├── Tutoriel-OpenClaw-Complet.pdf  # PDF avec logo
+├── Tutoriel-OpenClaw-Complet.html # Version HTML du PDF
+├── logo-stephane.jpg              # Ton logo
+└── server.js                      # Serveur Node.js
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 PROCHAINES ÉTAPES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Déploie le site sur Coolify (besoin du token)
+2. Crée la page Notion avec les liens
+3. Envoie le PDF à tes contacts si besoin
+
+Besoin d'aide pour le déploiement ? Donne-moi ton token Coolify
+ou je peux t'aider à configurer un autre hébergement (Vercel, Netlify).
+
+À bientôt !
+Artia 🦉

@@ -1,0 +1,972 @@
+<h1>🦞 Tutoriel Complet : Configurer OpenClaw pour le Développement d&#39;Applications</h1>
+<blockquote>
+<p><strong>Objectif</strong> : Maîtriser OpenClaw comme environnement de développement assisté par IA, de l&#39;installation à la production.</p>
+</blockquote>
+<hr>
+<h2>📋 Table des Matières</h2>
+<ol>
+<li><a href="#1-architecture--concepts-fondamentaux">Architecture &amp; Concepts Fondamentaux</a></li>
+<li><a href="#2-installation--configuration-initiale">Installation &amp; Configuration Initiale</a></li>
+<li><a href="#3-structure-du-workspace">Structure du Workspace</a></li>
+<li><a href="#4-configuration-avanc%C3%A9e-du-gateway">Configuration Avancée du Gateway</a></li>
+<li><a href="#5-d%C3%A9veloppement-de-skills">Développement de Skills</a></li>
+<li><a href="#6-gestion-des-sessions--agents">Gestion des Sessions &amp; Agents</a></li>
+<li><a href="#7-int%C3%A9grations-channels">Intégrations Channels</a></li>
+<li><a href="#8-s%C3%A9curit%C3%A9--sandbox">Sécurité &amp; Sandbox</a></li>
+<li><a href="#9-automatisations--cron">Automatisations &amp; Cron</a></li>
+<li><a href="#10-bonnes-pratiques--debugging">Bonnes Pratiques &amp; Debugging</a></li>
+</ol>
+<hr>
+<h2>1. Architecture &amp; Concepts Fondamentaux</h2>
+<h3>1.1 Vue d&#39;ensemble</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    CHANNELS (Messaging)                      │
+│  WhatsApp │ Telegram │ Discord │ iMessage │ WebChat │ ...   │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      GATEWAY (OpenClaw)                      │
+│  • WebSocket Server (ws://127.0.0.1:18789)                  │
+│  • Gestion des sessions                                     │
+│  • Routage des messages                                     │
+│  • Scheduler (cron)                                         │
+└──────────┬──────────────────────────────┬───────────────────┘
+           │                              │
+           ▼                              ▼
+┌─────────────────────┐      ┌──────────────────────────────┐
+│   AGENT (Pi AI)     │      │   NODES (iOS/Android/macOS)  │
+│  • Workspace        │      │  • Canvas                    │
+│  • Tools            │      │  • Camera                    │
+│  • Skills           │      │  • Screen recording          │
+└─────────────────────┘      └──────────────────────────────┘
+</code></pre>
+<h3>1.2 Composants Clés</h3>
+<table>
+<thead>
+<tr>
+<th>Composant</th>
+<th>Description</th>
+<th>Localisation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Gateway</strong></td>
+<td>Processus central qui gère toutes les connexions</td>
+<td><code>~/.openclaw/</code></td>
+</tr>
+<tr>
+<td><strong>Agent</strong></td>
+<td>Le &quot;cerveau&quot; IA qui exécute les tâches</td>
+<td>Workspace + <code>agentDir</code></td>
+</tr>
+<tr>
+<td><strong>Workspace</strong></td>
+<td>Répertoire de travail par défaut</td>
+<td><code>~/.openclaw/workspace</code></td>
+</tr>
+<tr>
+<td><strong>Session</strong></td>
+<td>Contexte conversationnel persistant</td>
+<td><code>~/.openclaw/agents/&lt;id&gt;/sessions/</code></td>
+</tr>
+<tr>
+<td><strong>Skills</strong></td>
+<td>Extensions qui ajoutent des capacités</td>
+<td><code>~/.openclaw/skills/</code> + workspace</td>
+</tr>
+<tr>
+<td><strong>Channels</strong></td>
+<td>Interfaces de messagerie (WhatsApp, Telegram, etc.)</td>
+<td>Config dans <code>openclaw.json</code></td>
+</tr>
+</tbody></table>
+<h3>1.3 Flux de Données</h3>
+<pre><code>Message reçu → Gateway → Routage (bindings) → Agent → Tools → Réponse
+                    ↓
+              Session persistence (JSONL)
+</code></pre>
+<hr>
+<h2>2. Installation &amp; Configuration Initiale</h2>
+<h3>2.1 Prérequis</h3>
+<pre><code class="language-bash"># Node.js ≥ 22 requis
+node --version  # v22.x.x ou supérieur
+
+# pnpm recommandé (optionnel)
+pnpm --version
+</code></pre>
+<h3>2.2 Installation</h3>
+<pre><code class="language-bash"># Méthode 1 : Script d&#39;installation (recommandé)
+curl -fsSL https://openclaw.bot/install.sh | bash
+
+# Méthode 2 : npm global
+npm install -g openclaw@latest
+
+# Méthode 3 : pnpm global
+pnpm add -g openclaw@latest
+</code></pre>
+<h3>2.3 Onboarding Wizard</h3>
+<pre><code class="language-bash"># Lancer l&#39;assistant de configuration complet
+openclaw onboard --install-daemon
+</code></pre>
+<p>L&#39;assistant configure :</p>
+<ul>
+<li>✅ Authentification (OAuth ou clés API)</li>
+<li>✅ Gateway (port, token de sécurité)</li>
+<li>✅ Channels (WhatsApp, Telegram, Discord...)</li>
+<li>✅ Service en arrière-plan (systemd/launchd)</li>
+<li>✅ Workspace de base</li>
+</ul>
+<h3>2.4 Vérification Post-Install</h3>
+<pre><code class="language-bash"># Vérifier le statut
+gateway
+openclaw status
+openclaw health
+
+# Vérifier la sécurité
+openclaw security audit --deep
+
+# Ouvrir le dashboard
+openclaw dashboard
+# ou http://127.0.0.1:18789/
+</code></pre>
+<hr>
+<h2>3. Structure du Workspace</h2>
+<h3>3.1 Fichiers Essentiels</h3>
+<p>Le workspace (<code>~/.openclaw/workspace</code> par défaut) contient :</p>
+<pre><code>~/.openclaw/workspace/
+├── AGENTS.md           # Instructions opérationnelles pour l&#39;agent
+├── SOUL.md            # Personnalité, ton, boundaries
+├── USER.md            # Informations sur l&#39;utilisateur
+├── IDENTITY.md        # Identité de l&#39;agent (nom, emoji)
+├── TOOLS.md           # Notes sur les outils locaux
+├── HEARTBEAT.md       # Checklist pour heartbeats
+├── MEMORY.md          # Mémoire long terme (main session uniquement)
+├── BOOTSTRAP.md       # Rituel de première connexion (à supprimer après)
+├── memory/            # Logs quotidiens
+│   ├── 2026-02-01.md
+│   └── 2026-02-02.md
+├── skills/            # Skills spécifiques au workspace
+└── canvas/            # Fichiers UI pour nodes (optionnel)
+</code></pre>
+<h3>3.2 Création des Fichiers de Base</h3>
+<pre><code class="language-bash"># Si les fichiers sont manquants
+openclaw setup --workspace ~/.openclaw/workspace
+</code></pre>
+<h3>3.3 Templates Recommandés</h3>
+<p><strong>AGENTS.md</strong> :</p>
+<pre><code class="language-markdown"># AGENTS.md - Instructions pour l&#39;Agent
+
+## Principes
+- Être direct et utile, pas corporate
+- Avoir des opinions, ne pas être un simple moteur de recherche
+- Rester discret dans les groupes, ne pas répondre à tout
+
+## Sécurité
+- Ne jamais révéler de clés API
+- Ne jamais effectuer de paiements
+- Demander confirmation avant actions externes
+
+## Mémoire
+- Écrire les décisions importantes dans MEMORY.md
+- Logger les erreurs dans .learnings/
+</code></pre>
+<p><strong>SOUL.md</strong> :</p>
+<pre><code class="language-markdown"># SOUL.md - Qui je suis
+
+## Core Truths
+- Genuinement utile, pas performativement utile
+- Avoir des opinions
+- Ressourceux avant de demander
+- Gagner la confiance par la compétence
+
+## Vibe
+- Concis quand nécessaire, approfondi quand important
+- Pas un drone corporate
+- Juste... bon
+</code></pre>
+<hr>
+<h2>4. Configuration Avancée du Gateway</h2>
+<h3>4.1 Fichier de Configuration</h3>
+<p>Chemin : <code>~/.openclaw/openclaw.json</code> (JSON5 - commentaires autorisés)</p>
+<pre><code class="language-json5">{
+  // === AGENTS ===
+  agents: {
+    defaults: {
+      // Workspace par défaut
+      workspace: &quot;~/.openclaw/workspace&quot;,
+      
+      // Modèle par défaut
+      model: &quot;kimi-coding/kimi-for-coding&quot;,
+      
+      // Configuration sandbox
+      sandbox: {
+        mode: &quot;non-main&quot;,      // &quot;off&quot; | &quot;non-main&quot; | &quot;all&quot;
+        scope: &quot;session&quot;,      // &quot;session&quot; | &quot;agent&quot; | &quot;shared&quot;
+        workspaceAccess: &quot;rw&quot;, // &quot;none&quot; | &quot;ro&quot; | &quot;rw&quot;
+        docker: {
+          image: &quot;openclaw-sandbox:bookworm-slim&quot;,
+          network: &quot;bridge&quot;,   // &quot;none&quot; | &quot;bridge&quot; | &quot;host&quot;
+          binds: [],
+        },
+      },
+      
+      // Models disponibles avec alias
+      models: {
+        fast: { alias: &quot;fast&quot;, provider: &quot;anthropic&quot;, model: &quot;claude-sonnet-4-5&quot; },
+        deep: { alias: &quot;deep&quot;, provider: &quot;anthropic&quot;, model: &quot;claude-opus-4-5&quot; },
+      },
+    },
+    
+    // Agents additionnels (multi-agent)
+    list: [
+      {
+        id: &quot;main&quot;,
+        default: true,
+        name: &quot;Assistant&quot;,
+        workspace: &quot;~/.openclaw/workspace&quot;,
+      },
+      {
+        id: &quot;work&quot;,
+        name: &quot;Work Bot&quot;,
+        workspace: &quot;~/.openclaw/workspace-work&quot;,
+        model: &quot;anthropic/claude-opus-4-5&quot;,
+      },
+    ],
+  },
+  
+  // === SESSIONS ===
+  session: {
+    dmScope: &quot;main&quot;,  // &quot;main&quot; | &quot;per-peer&quot; | &quot;per-channel-peer&quot;
+    reset: {
+      mode: &quot;daily&quot;,
+      atHour: 4,
+      idleMinutes: 240,
+    },
+    mainKey: &quot;main&quot;,
+  },
+  
+  // === CHANNELS ===
+  channels: {
+    whatsapp: {
+      allowFrom: [&quot;+336XXXXXXXX&quot;],  // Whitelist DMs
+      groups: {
+        &quot;*&quot;: { requireMention: true },
+      },
+    },
+    telegram: {
+      allowFrom: [],
+      groups: {
+        &quot;*&quot;: { requireMention: false },
+      },
+    },
+  },
+  
+  // === SKILLS ===
+  skills: {
+    entries: {
+      &quot;nano-banana-pro&quot;: {
+        enabled: true,
+        apiKey: &quot;${GEMINI_API_KEY}&quot;,  // Variable d&#39;env
+      },
+    },
+  },
+  
+  // === ENV ===
+  env: {
+    OPENROUTER_API_KEY: &quot;${OPENROUTER_API_KEY}&quot;,
+    shellEnv: {
+      enabled: true,
+      timeoutMs: 15000,
+    },
+  },
+  
+  // === BINDINGS (Multi-agent routing) ===
+  bindings: [
+    { agentId: &quot;main&quot;, match: { channel: &quot;whatsapp&quot; } },
+    { agentId: &quot;work&quot;, match: { channel: &quot;telegram&quot; } },
+  ],
+}
+</code></pre>
+<h3>4.2 Modification de la Configuration</h3>
+<pre><code class="language-bash"># Voir la config actuelle
+openclaw gateway call config.get --params &#39;{}&#39;
+
+# Modifier partiellement (merge)
+openclaw gateway call config.patch --params &#39;{
+  &quot;raw&quot;: &quot;{ channels: { telegram: { groups: { \&quot;*\&quot;: { requireMention: false } } } } }&quot;,
+  &quot;baseHash&quot;: &quot;&lt;hash-from-config-get&gt;&quot;,
+  &quot;restartDelayMs&quot;: 2000
+}&#39;
+
+# Remplacer toute la config
+openclaw gateway call config.apply --params &#39;{
+  &quot;raw&quot;: &quot;{ ... }&quot;,
+  &quot;baseHash&quot;: &quot;&lt;hash&gt;&quot;,
+  &quot;note&quot;: &quot;Mise à jour config&quot;
+}&#39;
+</code></pre>
+<h3>4.3 Variables d&#39;Environnement</h3>
+<p>Ordre de précédence (haut → bas) :</p>
+<ol>
+<li>Process environment</li>
+<li><code>.env</code> dans le répertoire courant</li>
+<li><code>~/.openclaw/.env</code> (global)</li>
+<li>Bloc <code>env</code> dans <code>openclaw.json</code></li>
+</ol>
+<pre><code class="language-bash"># Fichier ~/.openclaw/.env
+OPENROUTER_API_KEY=sk-or-...
+GEMINI_API_KEY=AI...
+NOTION_API_KEY=ntn_...
+</code></pre>
+<hr>
+<h2>5. Développement de Skills</h2>
+<h3>5.1 Qu&#39;est-ce qu&#39;un Skill ?</h3>
+<p>Un skill est un dossier contenant un fichier <code>SKILL.md</code> avec :</p>
+<ul>
+<li>Frontmatter YAML (métadonnées)</li>
+<li>Instructions détaillées pour l&#39;agent</li>
+<li>Exemples d&#39;utilisation</li>
+</ul>
+<h3>5.2 Structure d&#39;un Skill</h3>
+<pre><code>skills/mon-skill/
+├── SKILL.md           # Fichier principal (obligatoire)
+├── scripts/           # Scripts utilitaires (optionnel)
+│   └── setup.sh
+└── assets/            # Ressources (optionnel)
+</code></pre>
+<h3>5.3 Template SKILL.md</h3>
+<pre><code class="language-markdown">---
+name: mon-skill
+description: Fait quelque chose d&#39;utile avec l&#39;API X
+homepage: https://api-x.com
+docs: https://docs.api-x.com
+metadata:
+  {
+    &quot;openclaw&quot;:
+      {
+        &quot;emoji&quot;: &quot;🛠️&quot;,
+        &quot;requires&quot;: {
+          &quot;bins&quot;: [&quot;curl&quot;, &quot;jq&quot;],
+          &quot;env&quot;: [&quot;API_X_KEY&quot;],
+          &quot;config&quot;: [&quot;channels.enabled&quot;]
+        },
+        &quot;primaryEnv&quot;: &quot;API_X_KEY&quot;,
+        &quot;install&quot;: [
+          {
+            &quot;id&quot;: &quot;brew&quot;,
+            &quot;kind&quot;: &quot;brew&quot;,
+            &quot;formula&quot;: &quot;api-x-cli&quot;,
+            &quot;bins&quot;: [&quot;api-x&quot;]
+          }
+        ]
+      }
+  }
+---
+
+# mon-skill
+
+Utilise l&#39;API X pour faire des choses incroyables.
+
+## Prérequis
+
+1. Obtenir une clé API : https://api-x.com/keys
+2. Stocker la clé : `export API_X_KEY=votre_cle`
+
+## Usage
+
+```bash
+# Appel API basique
+curl -H &quot;Authorization: Bearer $API_X_KEY&quot; \
+  https://api-x.com/v1/endpoint
+</code></pre>
+<h2>Exemples</h2>
+<h3>Exemple 1 : Lister les items</h3>
+<pre><code class="language-bash">curl &quot;https://api-x.com/v1/items&quot; \
+  -H &quot;Authorization: Bearer $API_X_KEY&quot;
+</code></pre>
+<h3>Exemple 2 : Créer un item</h3>
+<pre><code class="language-bash">curl -X POST &quot;https://api-x.com/v1/items&quot; \
+  -H &quot;Authorization: Bearer $API_X_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#39;{&quot;name&quot;: &quot;Nouvel item&quot;}&#39;
+</code></pre>
+<pre><code>
+### 5.4 Installation de Skills
+
+```bash
+# Depuis ClawHub (registre public)
+clawhub install notion
+clawhub install gemini
+
+# Mettre à jour tous les skills
+clawhub update --all
+
+# Synchroniser (scan + publish)
+clawhub sync --all
+</code></pre>
+<h3>5.5 Skills Locaux</h3>
+<pre><code class="language-bash"># Créer un skill local
+mkdir -p ~/.openclaw/skills/mon-skill
+touch ~/.openclaw/skills/mon-skill/SKILL.md
+
+# Ou dans le workspace (priorité plus haute)
+mkdir -p ~/clawd/skills/mon-skill
+touch ~/clawd/skills/mon-skill/SKILL.md
+</code></pre>
+<p>Ordre de priorité :
+<code>&lt;workspace&gt;/skills</code> &gt; <code>~/.openclaw/skills</code> &gt; skills intégrés</p>
+<hr>
+<h2>6. Gestion des Sessions &amp; Agents</h2>
+<h3>6.1 Types de Sessions</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Clé de session</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Main (DM)</strong></td>
+<td><code>agent:main:main</code></td>
+<td>Conversation principale 1:1</td>
+</tr>
+<tr>
+<td><strong>Groupe</strong></td>
+<td><code>agent:main:whatsapp:group:&lt;id&gt;</code></td>
+<td>Chat de groupe isolé</td>
+</tr>
+<tr>
+<td><strong>Cron</strong></td>
+<td><code>cron:&lt;jobId&gt;</code></td>
+<td>Tâches planifiées</td>
+</tr>
+<tr>
+<td><strong>Webhook</strong></td>
+<td><code>hook:&lt;uuid&gt;</code></td>
+<td>Intégrations web</td>
+</tr>
+<tr>
+<td><strong>Node</strong></td>
+<td><code>node-&lt;nodeId&gt;</code></td>
+<td>Sessions depuis nodes</td>
+</tr>
+</tbody></table>
+<h3>6.2 Gestion des Sessions</h3>
+<pre><code class="language-bash"># Lister les sessions
+openclaw sessions --json
+openclaw sessions --active 60  # Active dans les 60 dernières minutes
+
+# Voir l&#39;historique d&#39;une session
+openclaw sessions history &lt;sessionKey&gt;
+
+# Envoyer un message à une session
+openclaw sessions send --sessionKey &lt;key&gt; --message &quot;Hello&quot;
+
+# Status d&#39;une session
+openclaw session_status --sessionKey &lt;key&gt;
+</code></pre>
+<h3>6.3 Multi-Agent</h3>
+<pre><code class="language-bash"># Ajouter un agent
+openclaw agents add work
+
+# Lister les agents avec bindings
+openclaw agents list --bindings
+
+# Configurer le routing (exemple)
+# Dans ~/.openclaw/openclaw.json :
+{
+  agents: {
+    list: [
+      { id: &quot;personal&quot;, workspace: &quot;~/.openclaw/workspace&quot;, default: true },
+      { id: &quot;work&quot;, workspace: &quot;~/.openclaw/workspace-work&quot; },
+    ],
+  },
+  bindings: [
+    { agentId: &quot;personal&quot;, match: { channel: &quot;whatsapp&quot;, accountId: &quot;personal&quot; } },
+    { agentId: &quot;work&quot;, match: { channel: &quot;whatsapp&quot;, accountId: &quot;work&quot; } },
+  ],
+}
+</code></pre>
+<h3>6.4 Sub-agents (Sessions Spawn)</h3>
+<pre><code class="language-javascript">// Exécuter une tâche en arrière-plan
+sessions_spawn({
+  task: &quot;Analyser ce codebase et créer un rapport&quot;,
+  runTimeoutSeconds: 300
+})
+</code></pre>
+<p>Gestion des sub-agents :</p>
+<pre><code class="language-bash"># Lister les sub-agents actifs
+/subagents list
+
+# Voir les logs
+/subagents log &lt;runId&gt;
+
+# Arrêter un sub-agent
+/subagents stop &lt;runId&gt;
+
+# Envoyer un message
+/subagents send &lt;runId&gt; &quot;Continue avec l&#39;étape 2&quot;
+</code></pre>
+<hr>
+<h2>7. Intégrations Channels</h2>
+<h3>7.1 WhatsApp</h3>
+<pre><code class="language-bash"># Connexion (scan QR)
+openclaw channels login whatsapp
+
+# Approbation de pairing
+openclaw pairing list whatsapp
+openclaw pairing approve whatsapp &lt;code&gt;
+</code></pre>
+<p>Configuration :</p>
+<pre><code class="language-json5">{
+  channels: {
+    whatsapp: {
+      allowFrom: [&quot;+33612345678&quot;],
+      groups: {
+        &quot;*&quot;: { requireMention: true },
+        &quot;1203630...@g.us&quot;: { requireMention: false },
+      },
+    },
+  },
+}
+</code></pre>
+<h3>7.2 Telegram</h3>
+<pre><code class="language-bash"># Créer un bot via @BotFather, obtenir le token
+# Le wizard peut le configurer, ou manuellement :
+</code></pre>
+<p>Configuration :</p>
+<pre><code class="language-json5">{
+  channels: {
+    telegram: {
+      botToken: &quot;${TELEGRAM_BOT_TOKEN}&quot;,
+      allowFrom: [],
+      groups: { &quot;*&quot;: { requireMention: false } },
+    },
+  },
+}
+</code></pre>
+<h3>7.3 Discord</h3>
+<pre><code class="language-json5">{
+  channels: {
+    discord: {
+      botToken: &quot;${DISCORD_BOT_TOKEN}&quot;,
+      guilds: {
+        &quot;*&quot;: { requireMention: true },
+      },
+    },
+  },
+}
+</code></pre>
+<h3>7.4 WebChat / Dashboard</h3>
+<p>Accessible localement : <a href="http://127.0.0.1:18789/">http://127.0.0.1:18789/</a></p>
+<p>Pour accès distant :</p>
+<ul>
+<li>SSH tunnel : <code>ssh -N -L 18789:127.0.0.1:18789 user@host</code></li>
+<li>Tailscale : voir <a href="/gateway/tailscale">Tailscale docs</a></li>
+</ul>
+<hr>
+<h2>8. Sécurité &amp; Sandbox</h2>
+<h3>8.1 Politique de Sécurité par Défaut</h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Comportement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>exec</code></td>
+<td>Approbation requise (ask mode)</td>
+</tr>
+<tr>
+<td><code>write</code>/<code>edit</code></td>
+<td>Sans restriction dans le workspace</td>
+</tr>
+<tr>
+<td><code>browser</code></td>
+<td>Sans restriction (loopback)</td>
+</tr>
+<tr>
+<td>Clés API</td>
+<td>Jamais affichées dans les réponses</td>
+</tr>
+</tbody></table>
+<h3>8.2 Modes Sandbox</h3>
+<pre><code class="language-json5">{
+  agents: {
+    defaults: {
+      sandbox: {
+        // Quand sandboxer ?
+        mode: &quot;non-main&quot;,  // &quot;off&quot; | &quot;non-main&quot; | &quot;all&quot;
+        
+        // Scope des containers
+        scope: &quot;session&quot;,  // &quot;session&quot; | &quot;agent&quot; | &quot;shared&quot;
+        
+        // Accès workspace
+        workspaceAccess: &quot;rw&quot;,  // &quot;none&quot; | &quot;ro&quot; | &quot;rw&quot;
+        
+        docker: {
+          // Image Docker
+          image: &quot;openclaw-sandbox:bookworm-slim&quot;,
+          
+          // Réseau
+          network: &quot;none&quot;,  // &quot;none&quot; | &quot;bridge&quot; | &quot;host&quot;
+          
+          // Bind mounts additionnels
+          binds: [
+            &quot;/home/user/projects:/projects:ro&quot;,
+            &quot;/var/run/docker.sock:/var/run/docker.sock&quot;,
+          ],
+          
+          // Commande de setup (une fois)
+          setupCommand: &quot;apt-get update &amp;&amp; apt-get install -y nodejs&quot;,
+          
+          // Variables d&#39;env dans le sandbox
+          env: {
+            NODE_ENV: &quot;production&quot;,
+          },
+        },
+      },
+    },
+  },
+}
+</code></pre>
+<h3>8.3 Construire l&#39;Image Sandbox</h3>
+<pre><code class="language-bash"># Image de base
+scripts/sandbox-setup.sh
+
+# Image avec navigateur
+scripts/sandbox-browser-setup.sh
+</code></pre>
+<h3>8.4 Elevated Mode</h3>
+<pre><code class="language-bash"># Activer le mode élevé (bypass certaines restrictions)
+/elevated on
+
+# Commandes disponibles en élevé
+/elevated full  # Skip exec approvals
+</code></pre>
+<p>Configuration :</p>
+<pre><code class="language-json5">{
+  tools: {
+    elevated: {
+      ask: &quot;on-miss&quot;,  // &quot;off&quot; | &quot;on-miss&quot; | &quot;always&quot;
+      allow: [&quot;+336XXXXXXXX&quot;],  // Qui peut utiliser elevated
+    },
+  },
+}
+</code></pre>
+<h3>8.5 Clés API &amp; Secrets</h3>
+<p><strong>Règles d&#39;or :</strong></p>
+<ul>
+<li>✅ Jamais de clés en dur dans le code</li>
+<li>✅ Utiliser <code>${VAR_NAME}</code> dans les configs</li>
+<li>✅ Stocker dans <code>~/.openclaw/.env</code></li>
+<li>✅ Utiliser environment variables</li>
+</ul>
+<pre><code class="language-bash"># Vérifier qu&#39;aucune clé ne fuite avant commit
+grep -r &quot;sk-&quot; ~/.openclaw/ 2&gt;/dev/null
+grep -r &quot;AQ\.&quot; ~/.openclaw/ 2&gt;/dev/null
+</code></pre>
+<hr>
+<h2>9. Automatisations &amp; Cron</h2>
+<h3>9.1 Types de Jobs</h3>
+<table>
+<thead>
+<tr>
+<th>Schedule</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>at</code></td>
+<td>One-shot à une date/heure</td>
+</tr>
+<tr>
+<td><code>every</code></td>
+<td>Intervalle fixe (ms)</td>
+</tr>
+<tr>
+<td><code>cron</code></td>
+<td>Expression cron (5 champs)</td>
+</tr>
+</tbody></table>
+<h3>9.2 Exemples de Jobs</h3>
+<pre><code class="language-javascript">// Job one-shot (rappel)
+cron({
+  action: &quot;add&quot;,
+  job: {
+    name: &quot;Rappel réunion&quot;,
+    schedule: { kind: &quot;at&quot;, atMs: Date.now() + 20 * 60 * 1000 },
+    payload: {
+      kind: &quot;systemEvent&quot;,
+      text: &quot;⏰ Rappel : Réunion dans 10 minutes !&quot;
+    },
+    sessionTarget: &quot;main&quot;
+  }
+})
+
+// Job récurrent (tous les jours à 9h)
+cron({
+  action: &quot;add&quot;,
+  job: {
+    name: &quot;Daily check&quot;,
+    schedule: { kind: &quot;cron&quot;, expr: &quot;0 9 * * *&quot;, tz: &quot;Europe/Paris&quot; },
+    payload: {
+      kind: &quot;agentTurn&quot;,
+      message: &quot;Faire un check des emails et du calendrier&quot;
+    },
+    sessionTarget: &quot;isolated&quot;
+  }
+})
+
+// Intervalle (toutes les heures)
+cron({
+  action: &quot;add&quot;,
+  job: {
+    name: &quot;Hourly sync&quot;,
+    schedule: { kind: &quot;every&quot;, everyMs: 3600000 },
+    payload: { kind: &quot;systemEvent&quot;, text: &quot;Sync automatique&quot; },
+    sessionTarget: &quot;main&quot;
+  }
+})
+</code></pre>
+<h3>9.3 Gestion des Jobs</h3>
+<pre><code class="language-bash"># Lister les jobs
+openclaw cron list
+
+# Exécuter immédiatement
+openclaw cron run &lt;jobId&gt;
+
+# Voir l&#39;historique
+openclaw cron runs &lt;jobId&gt;
+
+# Supprimer
+openclaw cron remove &lt;jobId&gt;
+</code></pre>
+<h3>9.4 Heartbeat vs Cron</h3>
+<table>
+<thead>
+<tr>
+<th>Usage</th>
+<th>Recommandation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Vérifications groupées (emails, calendrier)</td>
+<td>Heartbeat</td>
+</tr>
+<tr>
+<td>Timing précis (9h00 pile)</td>
+<td>Cron</td>
+</tr>
+<tr>
+<td>Isolation complète</td>
+<td>Cron</td>
+</tr>
+<tr>
+<td>Besoin de contexte conversationnel</td>
+<td>Heartbeat</td>
+</tr>
+<tr>
+<td>Rappel one-shot</td>
+<td>Cron</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>10. Bonnes Pratiques &amp; Debugging</h2>
+<h3>10.1 Commandes de Debug</h3>
+<pre><code class="language-bash"># Status complet
+openclaw status --all
+openclaw status --deep
+
+# Logs
+openclaw logs
+openclaw logs --follow
+
+# Docteur (diagnostics)
+openclaw doctor
+openclaw doctor --fix  # Auto-réparation
+
+# Expliquer la sandbox actuelle
+openclaw sandbox explain
+</code></pre>
+<h3>10.2 Slash Commands Utiles</h3>
+<table>
+<thead>
+<tr>
+<th>Commande</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>/status</code></td>
+<td>Voir le statut courant</td>
+</tr>
+<tr>
+<td><code>/context list</code></td>
+<td>Contenu du contexte actuel</td>
+</tr>
+<tr>
+<td><code>/context detail</code></td>
+<td>Détail par fichier/outil</td>
+</tr>
+<tr>
+<td><code>/model &lt;name&gt;</code></td>
+<td>Changer de modèle</td>
+</tr>
+<tr>
+<td><code>/think &lt;level&gt;</code></td>
+<td>Niveau de réflexion</td>
+</tr>
+<tr>
+<td><code>/verbose on/off</code></td>
+<td>Mode verbeux</td>
+</tr>
+<tr>
+<td><code>/reset</code> ou <code>/new</code></td>
+<td>Nouvelle session</td>
+</tr>
+<tr>
+<td><code>/compact</code></td>
+<td>Compacter le contexte</td>
+</tr>
+<tr>
+<td><code>/stop</code></td>
+<td>Arrêter l&#39;exécution</td>
+</tr>
+<tr>
+<td><code>/subagents list</code></td>
+<td>Voir les sub-agents</td>
+</tr>
+<tr>
+<td><code>/usage</code></td>
+<td>Statistiques d&#39;utilisation</td>
+</tr>
+</tbody></table>
+<pre><code>
+### 10.3 Debugging Checklist
+
+**Problème : L&#39;agent ne répond pas**
+1. `openclaw health` - Gateway en ligne ?
+2. `openclaw pairing list &lt;channel&gt;` - Pairing approuvé ?
+3. Vérifier les logs : `openclaw logs --follow`
+4. Vérifier `allowFrom` dans la config
+
+**Problème : Erreur de configuration**
+1. `openclaw doctor` - Voir les erreurs
+2. `openclaw doctor --fix` - Auto-réparer
+3. Vérifier la syntaxe JSON5 (virgules, guillemets)
+
+**Problème : Tool bloqué**
+1. Vérifier `tools.allow` / `tools.deny`
+2. Vérifier `sandbox.mode` et `workspaceAccess`
+3. `openclaw sandbox explain` - Voir les règles effectives
+
+### 10.4 Backup &amp; Migration
+
+```bash
+# Backup du workspace
+cd ~/.openclaw/workspace
+git init
+git add .
+git commit -m &quot;Backup workspace&quot;
+git push origin main
+
+# Backup des sessions (optionnel)
+cp -r ~/.openclaw/agents ~/backup/agents
+
+# Migration vers nouvelle machine
+# 1. Cloner le repo workspace
+git clone &lt;repo&gt; ~/.openclaw/workspace
+
+# 2. Copier les credentials (si nécessaire)
+# OAuth: ~/.openclaw/credentials/oauth.json
+# Sessions: ~/.openclaw/agents/&lt;id&gt;/sessions/
+
+# 3. Reconfigurer les channels
+openclaw channels login
+</code></pre>
+<h3>10.5 Performance</h3>
+<pre><code class="language-bash"># Voir l&#39;utilisation des tokens
+/usage full
+
+# Compacter manuellement
+/compact &quot;Résumer les décisions importantes&quot;
+
+# Changer de modèle pour plus de vitesse
+/model kimi-coding/kimi-for-coding
+</code></pre>
+<h3>10.6 Fichier .gitignore Recommandé</h3>
+<pre><code class="language-gitignore"># OpenClaw workspace gitignore
+.DS_Store
+.env
+**/*.key
+**/*.pem
+**/secrets*
+node_modules/
+*.log
+</code></pre>
+<hr>
+<h2>🎯 Exemple Complet : Setup Dev</h2>
+<pre><code class="language-bash"># 1. Installation
+curl -fsSL https://openclaw.bot/install.sh | bash
+
+# 2. Onboarding
+openclaw onboard --install-daemon
+
+# 3. Créer le workspace de dev
+mkdir -p ~/clawd
+cd ~/clawd
+
+# 4. Créer les fichiers de base
+cat &gt; AGENTS.md &lt;&lt; &#39;EOF&#39;
+# AGENTS.md - Workspace Dev
+
+## Principes
+- Toujours utiliser git pour versionner
+- Écrire les learnings dans .learnings/
+- Demander confirmation avant actions destructrices
+EOF
+
+cat &gt; SOUL.md &lt;&lt; &#39;EOF&#39;
+# SOUL.md
+
+## Identité
+- Assistant de développement
+- Pragmatique et efficace
+- Pose des questions si ambigu
+EOF
+
+# 5. Configurer les skills
+cd ~/clawd
+clawhub install notion
+clawhub install kimi-cli
+
+# 6. Créer le .env
+mkdir -p ~/.openclaw
+cat &gt; ~/.openclaw/.env &lt;&lt; &#39;EOF&#39;
+NOTION_API_KEY=ntn_xxx
+KIMI_API_KEY=xxx
+EOF
+
+# 7. Vérifier
+openclaw status
+openclaw health
+
+# 8. Premier test
+openclaw message send --target +336XXXXXXXX --message &quot;OpenClaw est configuré !&quot;
+</code></pre>
+<hr>
+<h2>📚 Ressources</h2>
+<ul>
+<li><strong>Documentation officielle</strong> : <a href="https://docs.openclaw.ai">https://docs.openclaw.ai</a></li>
+<li><strong>GitHub</strong> : <a href="https://github.com/openclaw/openclaw">https://github.com/openclaw/openclaw</a></li>
+<li><strong>ClawHub</strong> (Skills) : <a href="https://clawhub.com">https://clawhub.com</a></li>
+<li><strong>Discord communauté</strong> : <a href="https://discord.com/invite/clawd">https://discord.com/invite/clawd</a></li>
+</ul>
+<hr>
+<p><em>Dernière mise à jour : Février 2026</em>
+<em>Version OpenClaw : 2026.x</em></p>
+

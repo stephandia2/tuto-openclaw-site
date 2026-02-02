@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  app:
+    image: nginx:alpine
+    ports:
+      - "8083:80"
+    volumes:
+      - /home/quentinagency/Documents/App/tuto-openclaw-site/dist:/usr/share/nginx/html:ro
+    restart: unless-stopped

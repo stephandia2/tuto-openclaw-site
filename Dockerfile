@@ -1,10 +1,12 @@
 FROM nginx:alpine
 
-# Copy pre-built static files from dist folder
-COPY dist /usr/share/nginx/html
+WORKDIR /usr/share/nginx/html
+
+# Copy pre-built static files
+COPY ./dist/ .
 
 # Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
